@@ -63,9 +63,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libmpfr-dev libgmp-dev build-essential
+      run: sudo ./z setup
 
     - name: Configure Binutils
       run: ./z configure --install-location=${{ env.INSTALL_LOCATION }}

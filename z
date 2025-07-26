@@ -14,6 +14,7 @@ BUILD_CMD_NAME="build"
 CONFIGURE_CMD_NAME="configure"
 HELP_CMD_NAME="help"
 INSTALL_CMD_NAME="install"
+SETUP_CMD_NAME="setup"
 
 # Option Names
 INSTALL_LOCATION_OPT_NAME="--install-location"
@@ -26,6 +27,9 @@ DEFAULT_INSTALL_LOCATION="$HOME"
 # Required Build Tools
 REQUIRED_TOOLS=("gcc" "make")
 REQUIRED_TOOLS_VERSION=("13.3.0" "4.3.0")
+
+# Required System Packages for Setup
+REQUIRED_PACKAGES=("libmpfr-dev" "libgmp-dev" "build-essential")
 
 #==================================================================================================
 # Global Variables
@@ -172,12 +176,14 @@ Usage: ./z COMMAND [OPTIONS]
        ./z ${CONFIGURE_CMD_NAME} [${INSTALL_LOCATION_OPT_NAME}=PATH] (defaults to ${DEFAULT_INSTALL_LOCATION})
        ./z ${HELP_CMD_NAME}
        ./z ${INSTALL_CMD_NAME}
+       ./z ${SETUP_CMD_NAME}
 
 Commands:
   ${BUILD_CMD_NAME}        Build Binutils for Nanvix
   ${CONFIGURE_CMD_NAME}    Configure Binutils for Nanvix
   ${HELP_CMD_NAME}         Print help
   ${INSTALL_CMD_NAME}      Install Binutils for Nanvix
+  ${SETUP_CMD_NAME}        Install required packages to build Binutils for Nanvix
 
 Options:
   ${INSTALL_LOCATION_OPT_NAME}=PATH    Set install location to 'PATH'.
@@ -239,6 +245,40 @@ install_binutils() {
     echo "Installation completed successfully."
 }
 
+# Setup required system packages listed in REQUIRED_PACKAGES
+setup_packages() {
+    echo "Setting up required system packages for Binutils..."
+
+    # Check if running as root
+    if [[ $EUID -eq 0 ]]; then
+        echo "Running as root - proceeding with package installation"
+    else
+        echo "Checking if sudo is available..."
+        if ! command -v sudo >/dev/null 2>&1; then
+            print_error "sudo is not available"
+            exit 1
+        fi
+        echo "Will use sudo for package installation"
+    fi
+
+    # Update package list
+    echo "Updating package list..."
+    if [[ $EUID -eq 0 ]]; then
+        apt-get update
+    else
+        sudo apt-get update
+    fi
+
+    # Install missing packages from REQUIRED_PACKAGES
+    echo "Installing packages: ${REQUIRED_PACKAGES[@]}"
+    if [[ $EUID -eq 0 ]]; then
+        apt-get install -y "${REQUIRED_PACKAGES[@]}"
+    else
+        sudo apt-get install -y "${REQUIRED_PACKAGES[@]}"
+    fi
+    echo "Package installation completed successfully."
+}
+
 # Parse command line arguments
 parse_args() {
     while [[ $# -gt 0 ]] ; do
@@ -293,6 +333,10 @@ main() {
         "${INSTALL_CMD_NAME}")
             parse_args "$@"
             install_binutils
+            ;;
+        "${SETUP_CMD_NAME}")
+            parse_args "$@"
+            setup_packages
             ;;
         *)
             print_error "Unknown command '$command'"
