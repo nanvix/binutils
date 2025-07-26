@@ -1,0 +1,176 @@
+#!/bin/bash
+
+# Utility for building and installing Binutils for the Nanvix operating system.
+# Usage: ./z COMMAND [OPTIONS]
+
+set -euo pipefail
+
+#==================================================================================================
+# Global Constants
+#==================================================================================================
+
+## Command Names
+BUILD_CMD_NAME="build"
+CONFIGURE_CMD_NAME="configure"
+HELP_CMD_NAME="help"
+INSTALL_CMD_NAME="install"
+
+# Option Names
+INSTALL_LOCATION_OPT_NAME="--install-location"
+PARALLEL_BUILD_OPT_NAME="--parallel-build"
+
+# Default Values
+TARGET="i686-nanvix"
+DEFAULT_INSTALL_LOCATION="$HOME"
+
+#==================================================================================================
+# Global Variables
+#==================================================================================================
+
+INSTALL_LOCATION="$DEFAULT_INSTALL_LOCATION"
+PARALLEL_BUILD=""
+
+#==================================================================================================
+# Functions
+#==================================================================================================
+
+# Prints an error message in red.
+print_error() {
+    echo -e "\033[31mERROR: $1\033[0m" >&2
+}
+
+# Display help message
+show_help() {
+    cat << EOF
+Utility for building and installing Binutils for the Nanvix operating system.
+
+Usage: ./z COMMAND [OPTIONS]
+       ./z ${BUILD_CMD_NAME} [${PARALLEL_BUILD_OPT_NAME}=N] (defaults to using all available CPU cores)
+       ./z ${CONFIGURE_CMD_NAME} [${INSTALL_LOCATION_OPT_NAME}=PATH] (defaults to ${DEFAULT_INSTALL_LOCATION})
+       ./z ${HELP_CMD_NAME}
+       ./z ${INSTALL_CMD_NAME}
+
+Commands:
+  ${BUILD_CMD_NAME}        Build Binutils for Nanvix
+  ${CONFIGURE_CMD_NAME}    Configure Binutils for Nanvix
+  ${HELP_CMD_NAME}         Print help
+  ${INSTALL_CMD_NAME}      Install Binutils for Nanvix
+
+Options:
+  ${INSTALL_LOCATION_OPT_NAME}=PATH    Set install location to 'PATH'.
+  ${PARALLEL_BUILD_OPT_NAME}=N         Use parallel threads when building.
+EOF
+}
+
+# Configure Binutils for Nanvix
+configure_binutils() {
+    echo "Configuring Binutils for Nanvix..."
+    echo "Target: $TARGET"
+    echo "Install location: $INSTALL_LOCATION"
+
+    export TARGET="$TARGET"
+
+    ./configure \
+        --target="$TARGET" \
+        --prefix="$INSTALL_LOCATION" \
+        --with-sysroot="$INSTALL_LOCATION" \
+        --disable-multilib \
+        --disable-nls \
+        --disable-sim
+
+    echo "Configuration completed successfully."
+}
+
+# Build Binutils
+build_binutils() {
+    echo "Building Binutils for Nanvix..."
+
+    if [[ -n "$PARALLEL_BUILD" ]]; then
+        if ! [[ "$PARALLEL_BUILD" =~ ^[0-9]+$ ]] || [[ "$PARALLEL_BUILD" -le 0 ]]; then
+            print_error "${PARALLEL_BUILD_OPT_NAME} must be a positive integer greater than zero"
+            exit 1
+        fi
+        echo "Using $PARALLEL_BUILD parallel jobs"
+        make -j "$PARALLEL_BUILD" all
+    else
+        echo "Using all available CPU cores ($(nproc))"
+        make -j "$(nproc)" all
+    fi
+
+    echo "Build completed successfully."
+}
+
+# Install Binutils
+install_binutils() {
+    echo "Installing Binutils for Nanvix..."
+    echo "Install location: $INSTALL_LOCATION"
+
+    make install
+
+    echo "Installation completed successfully."
+}
+
+# Parse command line arguments
+parse_args() {
+    while [[ $# -gt 0 ]] ; do
+        case $1 in
+            "${INSTALL_LOCATION_OPT_NAME}="*)
+                INSTALL_LOCATION="${1#*=}"
+                shift
+                ;;
+            "${PARALLEL_BUILD_OPT_NAME}="*)
+                PARALLEL_BUILD="${1#*=}"
+                shift
+                ;;
+            *)
+                print_error "Unknown option '$1'"
+                exit 1
+                ;;
+        esac
+    done
+}
+
+#==================================================================================================
+# Main Script
+#==================================================================================================
+
+# Main function
+main() {
+    # Check if no command was specified.
+    if [[ $# -eq 0 ]]; then
+        print_error "No command specified."
+        show_help
+        exit 1
+    fi
+
+    local command="$1"
+    shift
+
+    case "$command" in
+        "${BUILD_CMD_NAME}")
+            parse_args "$@"
+            build_binutils
+            ;;
+        "${CONFIGURE_CMD_NAME}")
+            parse_args "$@"
+            configure_binutils
+            ;;
+        "${HELP_CMD_NAME}")
+            show_help
+            ;;
+        "${INSTALL_CMD_NAME}")
+            parse_args "$@"
+            install_binutils
+            ;;
+        *)
+            print_error "Unknown command '$command'"
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+# Run main function with all arguments
+main "$@"
+
+exit 0
