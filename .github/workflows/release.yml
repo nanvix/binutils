@@ -1,0 +1,108 @@
+# Copyright(c) The Maintainers of Nanvix.
+# Licensed under the MIT License.
+
+name: Release Pipeline
+
+#==================================================================================================
+# Trigger Conditions
+#==================================================================================================
+
+on:
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types:
+      - completed
+    branches:
+      - dev
+
+#==================================================================================================
+# Environment Variables
+#==================================================================================================
+
+env:
+  # Directory where Binutils will be installed for release.
+  RELEASE_INSTALL_LOCATION: /opt/nanvix
+
+#==================================================================================================
+# Jobs
+#==================================================================================================
+
+jobs:
+  release:
+    # Only run if the triggering workflow completed successfully
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: write  # Required for creating releases, tags, and updating branches
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.workflow_run.head_branch }}  # Check out the branch that triggered the workflow
+        fetch-depth: 0                                     # Fetch all history for branch operations
+
+    - name: Setup Git configuration
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Install dependencies
+      run: sudo ./z setup
+
+    - name: Create release directory
+      run: sudo mkdir -p ${{ env.RELEASE_INSTALL_LOCATION }}
+
+    - name: Configure Binutils for release
+      run: ./z configure --install-location=${{ env.RELEASE_INSTALL_LOCATION }}
+
+    - name: Build Binutils
+      run: ./z build
+
+    - name: Install Binutils to release location
+      run: sudo ./z install
+
+    - name: Get commit information
+      id: commit_info
+      run: |
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        TAG_NAME="nanvix/v2.40-${SHORT_SHA}"
+        ZIP_NAME="nanvix-binutils-${TAG_NAME}.zip"
+        echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+        echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+        echo "zip_name=${ZIP_NAME}" >> $GITHUB_OUTPUT
+
+    - name: Fast-forward nanvix/v2.40 branch to dev
+      run: |
+        git fetch origin
+        git checkout -B nanvix/v2.40 origin/dev
+        git push origin nanvix/v2.40
+
+    - name: Create release archive
+      run: |
+        cd /opt
+        sudo zip -r "${{ steps.commit_info.outputs.zip_name }}" nanvix/
+        sudo mv "${{ steps.commit_info.outputs.zip_name }}" ${{ github.workspace }}/
+        sudo chown $USER:$USER ${{ github.workspace }}/${{ steps.commit_info.outputs.zip_name }}
+
+    - name: Create release tag
+      run: |
+        git tag ${{ steps.commit_info.outputs.tag_name }}
+        git push origin ${{ steps.commit_info.outputs.tag_name }}
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+      tag_name: ${{ steps.commit_info.outputs.tag_name }}
+      name: "Nanvix Binutils ${{ steps.commit_info.outputs.tag_name }}"
+      body: |
+        Automated release of Nanvix Binutils v2.40
+
+        Built from commit: ${{ github.sha }}
+
+        This release contains the complete Binutils toolchain configured for the Nanvix operating system target (i686-nanvix).
+      files: |
+        ${{ steps.commit_info.outputs.zip_name }}
+      draft: false
+      prerelease: false
