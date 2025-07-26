@@ -39,6 +39,42 @@ print_error() {
     echo -e "\033[31mERROR: $1\033[0m" >&2
 }
 
+# Validate OS compatibility
+check_os_compatibility() {
+    # Check if running on Linux
+    if [[ "$(uname -s)" != "Linux" ]]; then
+        print_error "Unsupported operating system"
+        exit 1
+    fi
+
+    # Check if os-release file exists
+    if [[ ! -f /etc/os-release ]]; then
+        print_error "Cannot determine OS version"
+        exit 1
+    fi
+
+    # Get OS information.
+    source /etc/os-release
+
+    # Remove possible surrounding quotes from ID and VERSION_ID
+    OS_ID="${ID%\"}"
+    OS_ID="${OS_ID#\"}"
+    OS_VERSION_ID="${VERSION_ID%\"}"
+    OS_VERSION_ID="${OS_VERSION_ID#\"}"
+
+    # Check if OS is not Ubuntu
+    if [[ "$OS_ID" != "ubuntu" ]]; then
+        print_error "Unsupported operating system '$OS_ID'"
+        exit 1
+    fi
+
+    # Check if version is not 24.04
+    if [[ "$OS_VERSION_ID" != "24.04" ]]; then
+        print_error "Unsupported Ubuntu version '$OS_VERSION_ID'"
+        exit 1
+    fi
+}
+
 # Display help message
 show_help() {
     cat << EOF
@@ -136,6 +172,9 @@ parse_args() {
 
 # Main function
 main() {
+    # Validate OS compatibility first
+    check_os_compatibility
+
     # Check if no command was specified.
     if [[ $# -eq 0 ]]; then
         print_error "No command specified."
