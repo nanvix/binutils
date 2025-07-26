@@ -94,15 +94,15 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-      tag_name: ${{ steps.commit_info.outputs.tag_name }}
-      name: "Nanvix Binutils ${{ steps.commit_info.outputs.tag_name }}"
-      body: |
-        Automated release of Nanvix Binutils v2.40
+        tag_name: ${{ steps.commit_info.outputs.tag_name }}
+        name: "Nanvix Binutils ${{ steps.commit_info.outputs.tag_name }}"
+        body: |
+          Automated release of Nanvix Binutils v2.40
 
-        Built from commit: ${{ github.sha }}
+          Built from commit: ${{ github.sha }}
 
-        This release contains the complete Binutils toolchain configured for the Nanvix operating system target (i686-nanvix).
-      files: |
-        ${{ steps.commit_info.outputs.zip_name }}
-      draft: false
-      prerelease: false
+          This release contains the complete Binutils toolchain configured for the Nanvix operating system target (i686-nanvix).
+        files: |
+          ${{ steps.commit_info.outputs.zip_name }}
+        draft: false
+        prerelease: false
