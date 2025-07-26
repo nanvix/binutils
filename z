@@ -23,6 +23,10 @@ PARALLEL_BUILD_OPT_NAME="--parallel-build"
 TARGET="i686-nanvix"
 DEFAULT_INSTALL_LOCATION="$HOME"
 
+# Required Build Tools
+REQUIRED_TOOLS=("gcc" "make")
+REQUIRED_TOOLS_VERSION=("13.3.0" "4.3.0")
+
 #==================================================================================================
 # Global Variables
 #==================================================================================================
@@ -39,7 +43,90 @@ print_error() {
     echo -e "\033[31mERROR: $1\033[0m" >&2
 }
 
-# Validate OS compatibility
+# Compare two version strings (e.g., "13.3.0" vs "13.2.5").
+# Returns 0 (true) if version1 is greater than or equal to version2,
+# and returns 1 (false) if version1 is less than version2.
+compare_tool_version() {
+    local version1="$1"
+    local version2="$2"
+
+    # Split versions into arrays
+    IFS='.' read -ra v1_parts <<< "$version1"
+    IFS='.' read -ra v2_parts <<< "$version2"
+
+    # Pad arrays to same length with zeros
+    local max_length=$(( ${#v1_parts[@]} > ${#v2_parts[@]} ? ${#v1_parts[@]} : ${#v2_parts[@]} ))
+
+    local i
+
+    # Default to 0 for missing version parts to ensure proper comparison (e.g., "4.3" vs "4.3.0").
+    for ((i=0; i<max_length; i++)); do
+        local part1=${v1_parts[i]:-0}
+        local part2=${v2_parts[i]:-0}
+
+        if ((part1 > part2)); then
+            return 0
+        elif ((part1 < part2)); then
+            return 1
+        fi
+    done
+
+    # versions are equal
+    return 0
+}
+
+# Normalize a version string to have 3 parts (e.g., "4.3" -> "4.3.0").
+normalize_tool_version() {
+    local version="$1"
+    local parts=0
+    IFS='.' read -ra arr <<< "$version"
+    parts=${#arr[@]}
+    if (( parts < 3 )); then
+        while (( parts < 3 )); do
+            version="${version}.0"
+            ((parts++))
+        done
+    fi
+    echo "$version"
+}
+
+# Check for required development tools.
+check_required_tools() {
+    echo "Checking for required development tools..."
+
+    for i in "${!REQUIRED_TOOLS[@]}"; do
+        local tool="${REQUIRED_TOOLS[$i]}"
+        local min_version="${REQUIRED_TOOLS_VERSION[$i]}"
+
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            print_error "$tool is not installed or not in PATH"
+            exit 1
+        fi
+
+        # Get version string.
+        local version
+        version=$("$tool" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)
+        if [[ -z "$version" ]]; then
+            print_error "Unable to determine $tool version"
+            exit 1
+        fi
+
+        # Normalize version to three parts for consistent comparison.
+        version=$(normalize_tool_version "$version")
+
+        # Check if tool version is older than the minimum required version.
+        if ! compare_tool_version "$version" "$min_version"; then
+            print_error "$tool version $version is too old (required >= $min_version)"
+            exit 1
+        fi
+
+        echo "$tool $version found"
+    done
+
+    echo "All required tools are available."
+}
+
+# Validate OS compatibility.
 check_os_compatibility() {
     # Check if running on Linux
     if [[ "$(uname -s)" != "Linux" ]]; then
@@ -75,7 +162,7 @@ check_os_compatibility() {
     fi
 }
 
-# Display help message
+# Display help message.
 show_help() {
     cat << EOF
 Utility for building and installing Binutils for the Nanvix operating system.
@@ -104,6 +191,9 @@ configure_binutils() {
     echo "Target: $TARGET"
     echo "Install location: $INSTALL_LOCATION"
 
+    # Check for required development tools
+    check_required_tools
+
     export TARGET="$TARGET"
 
     ./configure \
@@ -117,9 +207,12 @@ configure_binutils() {
     echo "Configuration completed successfully."
 }
 
-# Build Binutils
+# Build Binutils.
 build_binutils() {
     echo "Building Binutils for Nanvix..."
+
+    # Check for required development tools
+    check_required_tools
 
     if [[ -n "$PARALLEL_BUILD" ]]; then
         if ! [[ "$PARALLEL_BUILD" =~ ^[0-9]+$ ]] || [[ "$PARALLEL_BUILD" -le 0 ]]; then
