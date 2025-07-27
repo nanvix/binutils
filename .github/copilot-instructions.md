@@ -41,6 +41,7 @@ This project uses a custom `z` utility script for streamlined building and insta
 ./z configure  # Configure the build
 ./z build      # Compile the source code
 ./z install    # Install to default location
+./z release    # Create a release zip file
 ```
 
 ## Contributing Guidelines

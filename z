@@ -258,9 +258,9 @@ release_binutils() {
 
     echo "Creating release..."
     local oldpwd=${PWD}
-    pushd "$INSTALL_LOCATION" || exit 1
+    pushd "$INSTALL_LOCATION" || { print_error "Failed to change directory to ${INSTALL_LOCATION}"; exit 1; }
     zip -r "${oldpwd}/${RELEASE_NAME}.zip" .
-    popd || exit 1
+    popd || { print_error "Failed to return to the previous directory after creating the release"; exit 1; }
     echo "Release created: ${RELEASE_NAME}.zip"
 }
 
@@ -308,6 +308,10 @@ parse_args() {
                 ;;
             "${PARALLEL_BUILD_OPT_NAME}="*)
                 PARALLEL_BUILD="${1#*=}"
+                shift
+                ;;
+            "${RELEASE_NAME_OPT_NAME}="*)
+                RELEASE_NAME="${1#*=}"
                 shift
                 ;;
             *)

@@ -75,6 +75,7 @@ stamp-*
 
 # Ignore build artifacts for Nanvix
 # TODO: Find a better way to handle this.
+/*.zip
 Makefile
 bfd/elf32-aarch64.c
 bfd/elf32-loongarch.c
