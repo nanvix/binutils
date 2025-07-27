@@ -14,22 +14,25 @@ BUILD_CMD_NAME="build"
 CONFIGURE_CMD_NAME="configure"
 HELP_CMD_NAME="help"
 INSTALL_CMD_NAME="install"
+RELEASE_CMD_NAME="release"
 SETUP_CMD_NAME="setup"
 
 # Option Names
 INSTALL_LOCATION_OPT_NAME="--install-location"
 PARALLEL_BUILD_OPT_NAME="--parallel-build"
+RELEASE_NAME_OPT_NAME="--release-name"
 
 # Default Values
 TARGET="i686-nanvix"
 DEFAULT_INSTALL_LOCATION="$HOME"
+DEFAULT_RELEASE_NAME="nanvix-binutils"
 
 # Required Build Tools
-REQUIRED_TOOLS=("gcc" "make")
-REQUIRED_TOOLS_VERSION=("13.3.0" "4.3.0")
+REQUIRED_TOOLS=("gcc" "make" "zip")
+REQUIRED_TOOLS_VERSION=("13.3.0" "4.3.0" "3.0.0")
 
 # Required System Packages for Setup
-REQUIRED_PACKAGES=("libmpfr-dev" "libgmp-dev" "build-essential")
+REQUIRED_PACKAGES=("libmpfr-dev" "libgmp-dev" "build-essential" "zip")
 
 #==================================================================================================
 # Global Variables
@@ -37,6 +40,7 @@ REQUIRED_PACKAGES=("libmpfr-dev" "libgmp-dev" "build-essential")
 
 INSTALL_LOCATION="$DEFAULT_INSTALL_LOCATION"
 PARALLEL_BUILD=""
+RELEASE_NAME="$DEFAULT_RELEASE_NAME"
 
 #==================================================================================================
 # Functions
@@ -94,6 +98,18 @@ normalize_tool_version() {
     echo "$version"
 }
 
+# Get the version of a tool.
+get_tool_version() {
+    local tool="$1"
+    local version
+    version=$("$tool" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)
+    if [[ -z "$version" ]]; then
+        print_error "Unable to determine $tool version"
+        exit 1
+    fi
+    echo "$version"
+}
+
 # Check for required development tools.
 check_required_tools() {
     echo "Checking for required development tools..."
@@ -109,7 +125,7 @@ check_required_tools() {
 
         # Get version string.
         local version
-        version=$("$tool" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)
+        version=$(get_tool_version "$tool")
         if [[ -z "$version" ]]; then
             print_error "Unable to determine $tool version"
             exit 1
@@ -171,11 +187,12 @@ show_help() {
     cat << EOF
 Utility for building and installing Binutils for the Nanvix operating system.
 
-Usage: ./z COMMAND [OPTIONS]
-       ./z ${BUILD_CMD_NAME} [${PARALLEL_BUILD_OPT_NAME}=N] (defaults to using all available CPU cores)
-       ./z ${CONFIGURE_CMD_NAME} [${INSTALL_LOCATION_OPT_NAME}=PATH] (defaults to ${DEFAULT_INSTALL_LOCATION})
+Usage: ./z COMMAND   [OPTIONS]
+       ./z ${BUILD_CMD_NAME}     [${PARALLEL_BUILD_OPT_NAME}=N]
+       ./z ${CONFIGURE_CMD_NAME} [${INSTALL_LOCATION_OPT_NAME}=PATH]
        ./z ${HELP_CMD_NAME}
        ./z ${INSTALL_CMD_NAME}
+       ./z ${RELEASE_CMD_NAME}   [${RELEASE_NAME_OPT_NAME}=NAME] [${PARALLEL_BUILD_OPT_NAME}=N] [${INSTALL_LOCATION_OPT_NAME}=PATH]
        ./z ${SETUP_CMD_NAME}
 
 Commands:
@@ -183,11 +200,13 @@ Commands:
   ${CONFIGURE_CMD_NAME}    Configure Binutils for Nanvix
   ${HELP_CMD_NAME}         Print help
   ${INSTALL_CMD_NAME}      Install Binutils for Nanvix
+  ${RELEASE_CMD_NAME}      Create a release of Binutils for Nanvix
   ${SETUP_CMD_NAME}        Install required packages to build Binutils for Nanvix
 
 Options:
-  ${INSTALL_LOCATION_OPT_NAME}=PATH    Set install location to 'PATH'.
-  ${PARALLEL_BUILD_OPT_NAME}=N         Use parallel threads when building.
+  ${INSTALL_LOCATION_OPT_NAME}=PATH    Set install location to 'PATH'          (defaults to '${DEFAULT_INSTALL_LOCATION}')
+  ${PARALLEL_BUILD_OPT_NAME}=N         Use 'N' parallel threads when building  (defaults to using all available CPU cores)
+  ${RELEASE_NAME_OPT_NAME}=NAME        Set the release name to 'NAME'          (defaults to '${DEFAULT_RELEASE_NAME}')
 EOF
 }
 
@@ -199,8 +218,6 @@ configure_binutils() {
 
     # Check for required development tools
     check_required_tools
-
-    export TARGET="$TARGET"
 
     ./configure \
         --target="$TARGET" \
@@ -245,6 +262,20 @@ install_binutils() {
     echo "Installation completed successfully."
 }
 
+# Release Binutils
+release_binutils() {
+    configure_binutils
+    build_binutils
+    install_binutils
+
+    echo "Creating release..."
+    local oldpwd=${PWD}
+    pushd "$INSTALL_LOCATION" || { print_error "Failed to change directory to ${INSTALL_LOCATION}"; exit 1; }
+    zip -r "${oldpwd}/${RELEASE_NAME}.zip" .
+    popd || { print_error "Failed to return to the previous directory after creating the release"; exit 1; }
+    echo "Release created: ${RELEASE_NAME}.zip"
+}
+
 # Setup required system packages listed in REQUIRED_PACKAGES
 setup_packages() {
     echo "Setting up required system packages for Binutils..."
@@ -270,7 +301,7 @@ setup_packages() {
     fi
 
     # Install missing packages from REQUIRED_PACKAGES
-    echo "Installing packages: ${REQUIRED_PACKAGES[@]}"
+    echo "Installing packages:" "${REQUIRED_PACKAGES[@]}"
     if [[ $EUID -eq 0 ]]; then
         apt-get install -y "${REQUIRED_PACKAGES[@]}"
     else
@@ -289,6 +320,10 @@ parse_args() {
                 ;;
             "${PARALLEL_BUILD_OPT_NAME}="*)
                 PARALLEL_BUILD="${1#*=}"
+                shift
+                ;;
+            "${RELEASE_NAME_OPT_NAME}="*)
+                RELEASE_NAME="${1#*=}"
                 shift
                 ;;
             *)
@@ -333,6 +368,10 @@ main() {
         "${INSTALL_CMD_NAME}")
             parse_args "$@"
             install_binutils
+            ;;
+        "${RELEASE_CMD_NAME}")
+            parse_args "$@"
+            release_binutils
             ;;
         "${SETUP_CMD_NAME}")
             parse_args "$@"
