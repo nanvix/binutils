@@ -200,8 +200,6 @@ configure_binutils() {
     # Check for required development tools
     check_required_tools
 
-    export TARGET="$TARGET"
-
     ./configure \
         --target="$TARGET" \
         --prefix="$INSTALL_LOCATION" \
