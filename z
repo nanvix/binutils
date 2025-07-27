@@ -28,11 +28,11 @@ DEFAULT_INSTALL_LOCATION="$HOME"
 DEFAULT_RELEASE_NAME="nanvix-binutils"
 
 # Required Build Tools
-REQUIRED_TOOLS=("gcc" "make")
-REQUIRED_TOOLS_VERSION=("13.3.0" "4.3.0")
+REQUIRED_TOOLS=("gcc" "make" "zip")
+REQUIRED_TOOLS_VERSION=("13.3.0" "4.3.0" "3.0.0")
 
 # Required System Packages for Setup
-REQUIRED_PACKAGES=("libmpfr-dev" "libgmp-dev" "build-essential")
+REQUIRED_PACKAGES=("libmpfr-dev" "libgmp-dev" "build-essential" "zip")
 
 #==================================================================================================
 # Global Variables
@@ -98,6 +98,18 @@ normalize_tool_version() {
     echo "$version"
 }
 
+# Get the version of a tool.
+get_tool_version() {
+    local tool="$1"
+    local version
+    version=$("$tool" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)
+    if [[ -z "$version" ]]; then
+        print_error "Unable to determine $tool version"
+        exit 1
+    fi
+    echo "$version"
+}
+
 # Check for required development tools.
 check_required_tools() {
     echo "Checking for required development tools..."
@@ -113,7 +125,7 @@ check_required_tools() {
 
         # Get version string.
         local version
-        version=$("$tool" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)
+        version=$(get_tool_version "$tool")
         if [[ -z "$version" ]]; then
             print_error "Unable to determine $tool version"
             exit 1
