@@ -171,9 +171,9 @@ show_help() {
     cat << EOF
 Utility for building and installing Binutils for the Nanvix operating system.
 
-Usage: ./z COMMAND [OPTIONS]
-       ./z ${BUILD_CMD_NAME} [${PARALLEL_BUILD_OPT_NAME}=N] (defaults to using all available CPU cores)
-       ./z ${CONFIGURE_CMD_NAME} [${INSTALL_LOCATION_OPT_NAME}=PATH] (defaults to ${DEFAULT_INSTALL_LOCATION})
+Usage: ./z COMMAND   [OPTIONS]
+       ./z ${BUILD_CMD_NAME}     [${PARALLEL_BUILD_OPT_NAME}=N]
+       ./z ${CONFIGURE_CMD_NAME} [${INSTALL_LOCATION_OPT_NAME}=PATH]
        ./z ${HELP_CMD_NAME}
        ./z ${INSTALL_CMD_NAME}
        ./z ${SETUP_CMD_NAME}
@@ -186,8 +186,8 @@ Commands:
   ${SETUP_CMD_NAME}        Install required packages to build Binutils for Nanvix
 
 Options:
-  ${INSTALL_LOCATION_OPT_NAME}=PATH    Set install location to 'PATH'.
-  ${PARALLEL_BUILD_OPT_NAME}=N         Use parallel threads when building.
+  ${INSTALL_LOCATION_OPT_NAME}=PATH    Set install location to 'PATH'          (defaults to '${DEFAULT_INSTALL_LOCATION}')
+  ${PARALLEL_BUILD_OPT_NAME}=N         Use 'N' parallel threads when building  (defaults to using all available CPU cores)
 EOF
 }
 
