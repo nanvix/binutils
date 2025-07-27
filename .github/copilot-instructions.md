@@ -38,9 +38,9 @@ This project uses a custom `z` utility script for streamlined building and insta
 
 # Complete build process
 ./z setup      # Install required system packages
-./z configure  # Configure for your system
-./z build      # Compile the binutils
-./z install    # Install to default location ($HOME)
+./z configure  # Configure the build
+./z build      # Compile the source code
+./z install    # Install to default location
 ```
 
 ## Contributing Guidelines
