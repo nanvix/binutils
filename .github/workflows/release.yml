@@ -55,7 +55,7 @@ jobs:
       id: commit_info
       run: |
         SHORT_SHA=$(git rev-parse --short HEAD)
-        TAG_NAME="nanvix/v2.40-${SHORT_SHA}"
+        TAG_NAME="nanvix-v2.40-${SHORT_SHA}"
         RELEASE_NAME="nanvix-binutils-v2.40-${SHORT_SHA}"
         echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
         echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
@@ -79,7 +79,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.commit_info.outputs.tag_name }}
-        name: "Nanvix Binutils ${{ steps.commit_info.outputs.tag_name }}"
+        name: "${{ steps.commit_info.outputs.tag_name }}"
         body: |
           Automated release of Nanvix Binutils v2.40
 
