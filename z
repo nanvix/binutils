@@ -268,7 +268,7 @@ setup_packages() {
     fi
 
     # Install missing packages from REQUIRED_PACKAGES
-    echo "Installing packages: ${REQUIRED_PACKAGES[@]}"
+    echo "Installing packages:" "${REQUIRED_PACKAGES[@]}"
     if [[ $EUID -eq 0 ]]; then
         apt-get install -y "${REQUIRED_PACKAGES[@]}"
     else
