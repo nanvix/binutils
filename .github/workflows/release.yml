@@ -20,8 +20,12 @@ on:
 #==================================================================================================
 
 env:
-  # Directory where Binutils will be installed for release.
+  # Version of Binutils.
+  BINUTILS_VERSION: 2.40
+  # Directory where Binutils will be installed.
   RELEASE_INSTALL_LOCATION: /opt/nanvix
+  # Directory where the sysroot is located.
+  RELEASE_SYSROOT_LOCATION: /opt/nanvix
 
 #==================================================================================================
 # Jobs
@@ -55,20 +59,25 @@ jobs:
       id: commit_info
       run: |
         SHORT_SHA=$(git rev-parse --short HEAD)
-        TAG_NAME="nanvix-v2.40-${SHORT_SHA}"
-        RELEASE_NAME="nanvix-binutils-v2.40-${SHORT_SHA}"
+        TAG_NAME="nanvix-${BINUTILS_VERSION}-${SHORT_SHA}"
+        RELEASE_NAME="nanvix-binutils-${BINUTILS_VERSION}-${SHORT_SHA}"
+        BINUTILS_BRANCH="nanvix/v${BINUTILS_VERSION}"
         echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
         echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
         echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+        echo "binutils_branch=${BINUTILS_BRANCH}" >> $GITHUB_OUTPUT
 
-    - name: Fast-forward nanvix/v2.40 branch to dev
+    - name: Fast-forward ${{ steps.commit_info.outputs.binutils_branch }} branch to dev
       run: |
         git fetch origin
-        git checkout -B nanvix/v2.40 origin/dev
-        git push origin nanvix/v2.40
+        git checkout -B ${{ steps.commit_info.outputs.binutils_branch }} origin/dev
+        git push origin ${{ steps.commit_info.outputs.binutils_branch }}
+
+    - name: Configure build
+      run: ./z configure --sysroot-location=${{ env.RELEASE_SYSROOT_LOCATION }} --install-location=${{ env.RELEASE_INSTALL_LOCATION }} --release-name=${{ steps.commit_info.outputs.release_name }}
 
     - name: Create release archive
-      run: ./z release --install-location=${{ env.RELEASE_INSTALL_LOCATION }} --release-name=${{ steps.commit_info.outputs.release_name }}
+      run: ./z release
 
     - name: Create release tag
       run: |
@@ -81,12 +90,12 @@ jobs:
         tag_name: ${{ steps.commit_info.outputs.tag_name }}
         name: "${{ steps.commit_info.outputs.tag_name }}"
         body: |
-          Automated release of Nanvix Binutils v2.40
+          Automated release of Nanvix Binutils ${{ env.BINUTILS_VERSION }}
 
           Built from commit: ${{ github.sha }}
 
           This release contains the complete Binutils toolchain configured for the Nanvix operating system target (i686-nanvix).
         files: |
-          ${{ steps.commit_info.outputs.release_name }}.zip
+          ${{ steps.commit_info.outputs.release_name }}.tar.bz2
         draft: false
         prerelease: false
