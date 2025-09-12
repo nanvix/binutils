@@ -21,7 +21,7 @@ on:
 
 env:
   # Version of Binutils.
-  BINUTILS_VERSION: 2.40
+  BINUTILS_VERSION: "2.40"
   # Directory where Binutils will be installed.
   RELEASE_INSTALL_LOCATION: /opt/nanvix
   # Directory where the sysroot is located.
