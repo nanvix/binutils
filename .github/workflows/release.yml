@@ -24,8 +24,6 @@ env:
   BINUTILS_VERSION: "2.40"
   # Directory where Binutils will be installed.
   RELEASE_INSTALL_LOCATION: /opt/nanvix
-  # Directory where the sysroot is located.
-  RELEASE_SYSROOT_LOCATION: /opt/nanvix
 
 #==================================================================================================
 # Jobs
@@ -74,7 +72,7 @@ jobs:
         git push origin ${{ steps.commit_info.outputs.binutils_branch }}
 
     - name: Configure build
-      run: ./z configure --sysroot-location=${{ env.RELEASE_SYSROOT_LOCATION }} --install-location=${{ env.RELEASE_INSTALL_LOCATION }} --release-name=${{ steps.commit_info.outputs.release_name }}
+      run: ./z configure --install-location=${{ env.RELEASE_INSTALL_LOCATION }} --release-name=${{ steps.commit_info.outputs.release_name }}
 
     - name: Create release archive
       run: ./z release

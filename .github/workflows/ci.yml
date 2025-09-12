@@ -33,8 +33,6 @@ concurrency:
 env:
   # Directory where Binutils will be installed.
   INSTALL_LOCATION: /tmp/nanvix
-  # Directory where the sysroot is located.
-  SYSROOT_LOCATION: /tmp/nanvix
 
 #==================================================================================================
 # Jobs
@@ -68,7 +66,7 @@ jobs:
       run: sudo ./z setup
 
     - name: Configure Binutils
-      run: ./z configure --sysroot-location=${{ env.SYSROOT_LOCATION }} --install-location=${{ env.INSTALL_LOCATION }}
+      run: ./z configure --install-location=${{ env.INSTALL_LOCATION }}
 
     - name: Build Binutils
       run: ./z build
