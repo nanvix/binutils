@@ -137,3 +137,6 @@ libbacktrace/gstdint.h
 libbacktrace/install-debuginfo-for-buildid.sh
 libctf/config.lt
 opcodes/po/Makefile.in
+
+.z.config
+nanvix-binutils.tar.bz2
