@@ -5,6 +5,17 @@
 #
 # Run './z help' for more information on how to use this utility.
 #
+# Relevant Environment Variables
+#
+#   - Z_TARGET: Target architecture.
+#   - Z_STAGE: Build stage.
+#   - Z_INSTALL_LOCATION: Installation directory.
+#   - Z_SYSROOT_LOCATION: Sysroot directory.
+#   - Z_RELEASE_NAME: Release name.
+#
+# shellcheck disable=SC2329
+# shellcheck disable=SC2317
+# shellcheck disable=SC2034
 
 #==================================================================================================
 
@@ -15,7 +26,7 @@ set -euo pipefail
 # Import Utils Script
 #==================================================================================================
 
-UTILS_SCRIPT_VERSION="e87c11f0b83fd4985f0c1c6effe41d3336537f9e"
+UTILS_SCRIPT_VERSION="7e9ddaaab0fe396d8cec7913e452be3f1344a676"
 UTILS_SCRIPT_URL="https://raw.githubusercontent.com/nanvix/scripts/${UTILS_SCRIPT_VERSION}/utils.sh"
 
 utils_script="/tmp/utils-${UTILS_SCRIPT_VERSION}.sh"
@@ -46,15 +57,16 @@ fi
 source "${utils_script}"
 
 #==================================================================================================
-# Project-Specific Constants
+# Z Constants
 #==================================================================================================
 
-# Project Name
-PROJECT_NAME="Binutils"
-PROJECT_BUILD_DIR="" # Directory used when building, empty if not required.
+# Project name.
+readonly Z_PROJECT_NAME="Binutils"
+ # Directory used when building, empty if not required.
+readonly Z_PROJECT_BUILD_DIR=""
 
 # Required Build Tools (tool_name => minimum_version)
-declare -A REQUIRED_TOOLS=(
+readonly -A Z_PROJECT_REQUIRED_TOOLS=(
     ["gcc"]="13.3.0"
     ["make"]="4.3.0"
     ["bzip2"]="1.0.8"
@@ -62,65 +74,17 @@ declare -A REQUIRED_TOOLS=(
 )
 
 # Required System Packages for Setup
-REQUIRED_PACKAGES=("build-essential" "wget" "bzip2" "tar" "libmpfr-dev" "libgmp-dev")
+readonly Z_PROJECT_REQUIRED_PACKAGES=("build-essential" "wget" "bzip2" "tar" "libmpfr-dev" "libgmp-dev")
+
+#==================================================================================================
+# Project-Specific Constants
+#==================================================================================================
 
 # Build Targets
-BUILD_TARGETS=("all")
+readonly BUILD_TARGETS=("all")
 
 # Install Targets
-INSTALL_TARGETS=("install")
-
-#==================================================================================================
-# Global Constants
-#==================================================================================================
-
-# Script Directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Configuration file path
-CONFIG_FILE="${SCRIPT_DIR}/.z.config"
-
-# Command Names
-BUILD_CMD_NAME="build"
-CONFIGURE_CMD_NAME="configure"
-HELP_CMD_NAME="help"
-INSTALL_CMD_NAME="install"
-RELEASE_CMD_NAME="release"
-SETUP_CMD_NAME="setup"
-
-# Option Names
-INSTALL_LOCATION_OPT_NAME="--install-location"
-PARALLEL_BUILD_OPT_NAME="--parallel-build"
-RELEASE_NAME_OPT_NAME="--release-name"
-STAGE_OPT_NAME="--stage"
-SYSROOT_LOCATION_OPT_NAME="--sysroot-location"
-
-# Default target value.
-DEFAULT_TARGET="i686-nanvix"
-# Default build stage.
-DEFAULT_STAGE="0"
-# Default install location.
-DEFAULT_INSTALL_LOCATION="${HOME}"
-# Default sysroot location.
-DEFAULT_SYSROOT_LOCATION="${HOME}"
-# Default release name
-DEFAULT_RELEASE_NAME="nanvix-${PROJECT_NAME,,}"
-
-# ID of supported OS
-SUPPORTED_OS_ID="ubuntu"
-# Version of supported OS
-SUPPORTED_OS_VERSION="24.04"
-
-#==================================================================================================
-# Global Variables
-#==================================================================================================
-
-TARGET="${DEFAULT_TARGET}"
-STAGE="${DEFAULT_STAGE}"
-INSTALL_LOCATION="$DEFAULT_INSTALL_LOCATION"
-PARALLEL_BUILD=""
-RELEASE_NAME="$DEFAULT_RELEASE_NAME"
-SYSROOT_LOCATION="$DEFAULT_SYSROOT_LOCATION"
+readonly INSTALL_TARGETS=("install")
 
 #==================================================================================================
 # Project-Specific Functions
@@ -137,7 +101,7 @@ SYSROOT_LOCATION="$DEFAULT_SYSROOT_LOCATION"
 #   - On failure, this function returns non-zero.
 #
 download_steps() {
-    print_info "No additional dependencies to download for ${PROJECT_NAME}."
+    print_info "No additional dependencies to download for ${Z_PROJECT_NAME}."
 
     return 0
 }
@@ -158,9 +122,9 @@ download_steps() {
 #
 configure_steps() {
     ./configure \
-        --target="${TARGET}" \
-        --prefix="${INSTALL_LOCATION}" \
-        --with-sysroot="${SYSROOT_LOCATION}" \
+        --target="${Z_TARGET}" \
+        --prefix="${Z_INSTALL_LOCATION}" \
+        --with-sysroot="${Z_SYSROOT_LOCATION}" \
         --disable-multilib \
         --disable-nls \
         --disable-sim || {
@@ -219,656 +183,11 @@ install_steps() {
 }
 
 #==================================================================================================
-# Generic Utility Functions
-#==================================================================================================
-
-#
-# Description
-#
-#   Displays a help message.
-#
-# Usage Example
-#
-#   show_help
-#
-show_help() {
-    cat << EOF
-Utility for building and installing ${PROJECT_NAME} for Nanvix.
-
-Usage: ./z COMMAND   [OPTIONS]
-       ./z ${BUILD_CMD_NAME}
-       ./z ${CONFIGURE_CMD_NAME} [${PARALLEL_BUILD_OPT_NAME}=N] [${INSTALL_LOCATION_OPT_NAME}=PATH] [${SYSROOT_LOCATION_OPT_NAME}=PATH] [${STAGE_OPT_NAME}=N]
-       ./z ${HELP_CMD_NAME}
-       ./z ${INSTALL_CMD_NAME}
-       ./z ${RELEASE_CMD_NAME}
-       ./z ${SETUP_CMD_NAME}
-
-Commands:
-  ${BUILD_CMD_NAME}        Build ${PROJECT_NAME} for Nanvix
-  ${CONFIGURE_CMD_NAME}    Configure ${PROJECT_NAME} for Nanvix
-  ${HELP_CMD_NAME}         Print help
-  ${INSTALL_CMD_NAME}      Install ${PROJECT_NAME} for Nanvix
-  ${RELEASE_CMD_NAME}      Create a release of ${PROJECT_NAME} for Nanvix
-  ${SETUP_CMD_NAME}        Install required packages to build ${PROJECT_NAME} for Nanvix
-
-Options:
-  ${INSTALL_LOCATION_OPT_NAME}=PATH  Set install location to 'PATH'          (defaults to '${DEFAULT_INSTALL_LOCATION}')
-  ${PARALLEL_BUILD_OPT_NAME}=N       Use 'N' parallel threads when building  (defaults to using all available CPU cores)
-  ${RELEASE_NAME_OPT_NAME}=NAME      Set the release name to 'NAME'          (defaults to '${DEFAULT_RELEASE_NAME}')
-  ${STAGE_OPT_NAME}=N                Set build stage to 'N'                  (defaults to '${DEFAULT_STAGE}')
-  ${SYSROOT_LOCATION_OPT_NAME}=PATH  Set sysroot location to 'PATH'          (defaults to '${DEFAULT_SYSROOT_LOCATION}')
-EOF
-}
-
-#
-# Description
-#
-#   Parses command line arguments.
-#
-# Parameters
-#
-#   - $@: Command line arguments passed to the script or to a subcommand.
-#
-# Return Value
-#
-#   - On success, this function returns zero.
-#   - On failure, this function returns non-zero.
-#
-# Usage Example
-#
-#   parse_args "$@"
-#
-parse_args() {
-    while [[ $# -gt 0 ]] ; do
-        case "$1" in
-            "${INSTALL_LOCATION_OPT_NAME}="*)
-                INSTALL_LOCATION="${1#*=}"
-                shift
-                ;;
-            "${PARALLEL_BUILD_OPT_NAME}="*)
-                PARALLEL_BUILD="${1#*=}"
-                shift
-                ;;
-            "${RELEASE_NAME_OPT_NAME}="*)
-                RELEASE_NAME="${1#*=}"
-                shift
-                ;;
-            "${STAGE_OPT_NAME}="*)
-                # shellcheck disable=SC2034
-                STAGE="${1#*=}"
-                shift
-                ;;
-            "${SYSROOT_LOCATION_OPT_NAME}="*)
-                SYSROOT_LOCATION="${1#*=}"
-                shift
-                ;;
-            *)
-                print_error "Unknown option '$1'"
-                return 1
-                ;;
-        esac
-    done
-}
-
-#
-# Description
-#
-#   Saves the current configuration parameters to a temporary file.
-#
-# Return Value
-#
-#   - On success, this function returns zero.
-#   - On failure, this function returns non-zero.
-#
-# Usage Example
-#
-#   save_config && echo "Success" || echo "Failure"
-#
-save_config() {
-    cat > "$CONFIG_FILE" << EOF
-TARGET="$TARGET"
-INSTALL_LOCATION="$INSTALL_LOCATION"
-SYSROOT_LOCATION="$SYSROOT_LOCATION"
-PARALLEL_BUILD="$PARALLEL_BUILD"
-RELEASE_NAME="$RELEASE_NAME"
-EOF
-
-    print_info "Configuration parameters saved to $CONFIG_FILE"
-
-    return 0
-}
-
-#
-# Description
-#
-#   Loads configuration parameters from the temporary file.
-#
-# Return Value
-#
-#   - Returns zero if configuration parameters were loaded successfully.
-#   - Returns non zero if the configuration file does not exist or could not be sourced.
-#
-# Usage Example
-#
-#   load_config && echo "Success" || echo "Failure"
-#
-load_config() {
-    if [[ -f "$CONFIG_FILE" ]]; then
-        # shellcheck disable=SC1090
-        source "$CONFIG_FILE" || {
-            print_error "Failed to source configuration file: $CONFIG_FILE"
-            return 1
-        }
-        print_info "Loaded configuration from $CONFIG_FILE"
-        print_info "Target: $TARGET"
-        print_info "Install location: $INSTALL_LOCATION"
-        print_info "Sysroot location: $SYSROOT_LOCATION"
-        [[ -n "$PARALLEL_BUILD" ]] && print_info "Parallel build: $PARALLEL_BUILD"
-        print_info "Release name: $RELEASE_NAME"
-    else
-        print_error "Configuration file not found: $CONFIG_FILE"
-        return 1
-    fi
-
-    return 0
-}
-
-
-#
-# Description
-#
-#   Checks if required tools are available.
-#
-# Return Value
-#
-#   - Returns zero if all required tools are available and meet the minimum version.
-#   - Returns non zero if any tool is missing or does not meet the minimum version.
-#
-# Usage Example
-#
-#   declare -A required_tools=( ["gcc"]="13.3.0" ["make"]="4.3.0" )
-#   check_required_tools required_tools
-#
-check_required_tools() {
-    print_info "Checking for required development tools..."
-
-    for tool in "${!REQUIRED_TOOLS[@]}"; do
-        print_info "Checking if $tool exists..."
-
-        local min_version="${REQUIRED_TOOLS[$tool]}"
-
-        if ! command -v "$tool" >/dev/null 2>&1; then
-            print_error "$tool is not installed or not in PATH"
-            return 1
-        fi
-
-        # Get version string.
-        local version
-        version=$(get_tool_version "$tool")
-        if [[ -z "$version" ]]; then
-            print_error "Unable to determine $tool version"
-            return 1
-        fi
-
-        # Normalize versions to three parts for consistent comparison.
-        version=$(normalize_version "$version")
-        min_version=$(normalize_version "$min_version")
-
-        # Check if tool version is older than the minimum required version.
-        if ! compare_version "$version" "$min_version"; then
-            print_error "$tool version $version is too old (required >= $min_version)"
-            return 1
-        fi
-
-        print_info "$tool $version found"
-    done
-
-    print_info "All required tools are available."
-
-    return 0
-}
-
-#
-# Description
-#
-#   Validates if the current OS is supported.
-#
-# Return Value
-#
-#   - On success, returns zero.
-#   - On failure, returns non-zero.
-#
-# Usage Example
-#
-#   check_os_compatibility && echo "Success" || echo "Failure"
-#
-check_os_compatibility() {
-    local osid
-    osid=$(get_os_id) || {
-        print_error "Failed to get OS ID"
-        return 1
-    }
-    if [[ "${osid}" != "${SUPPORTED_OS_ID}" ]]; then
-        print_error "Unsupported OS '${osid}'"
-        print_info "This script supports only Ubuntu."
-        return 1
-    fi
-
-    local osver
-    osver=$(get_os_version_id) || {
-        print_error "Failed to get OS version"
-        return 1
-    }
-    if [[ "${osver}"  != "${SUPPORTED_OS_VERSION}" ]]; then
-        print_error "Unsupported Ubuntu version '${osver}'"
-        print_info "This script supports only Ubuntu 24.04."
-        return 1
-    fi
-
-    return 0
-}
-
-#
-# Description
-#
-#   Creates the build directory, if the project uses one.
-#
-# Parameters
-#
-#   - $1: Project build directory.
-#
-# Return Value
-#
-#   - On success, returns zero.
-#   - On failure, returns non-zero.
-#
-# Usage Example
-#
-#   create_build_directory "/path/to/build"
-#
-create_build_directory() {
-    local project_build_dir=$1
-
-    # Create build directory if and only if the project uses one.
-    if [[ -n "${project_build_dir}" ]]; then
-        mkdir -p "${project_build_dir}" || {
-            print_error "Failed to create build directory"
-            return 1
-        }
-    fi
-
-    return 0
-}
-
-#
-# Description
-#
-#   Enters the build directory, if any.
-#
-# Parameters
-#
-#   - $1: Project build directory.
-#
-# Return Value
-#
-#   - On success, returns zero.
-#   - On failure, returns non-zero.
-#
-# Usage Example
-#
-#   enter_build_directory "/path/to/build"
-#
-enter_build_directory() {
-    local project_build_dir=$1
-
-    # Enter build directory if and only if the project uses one.
-    if [[ -n "${project_build_dir}" ]]; then
-        cd "${project_build_dir}" || {
-            print_error "failed to enter directory '${project_build_dir}'"
-            return 1
-        }
-    fi
-
-    return 0
-}
-
-#==================================================================================================
-# Generic Commands
-#==================================================================================================
-
-#
-# Description
-#
-#   Configures the project.
-#
-# Return Value
-#
-#   - On success, returns zero.
-#   - On failure, returns non-zero.
-#
-# Usage Example
-#
-#   configure && echo "Success" || echo "Failure"
-#
-configure() {
-    print_info "Configuring ${PROJECT_NAME} for ${TARGET}..."
-    print_info "Sysroot location: ${SYSROOT_LOCATION}"
-
-    # Save configuration parameters
-    save_config || {
-        print_error "Failed to save build configuration"
-        return 1
-    }
-
-    check_required_tools || {
-        print_error "Required tools are missing or do not meet the minimum version"
-        return 1
-    }
-
-    download_steps || {
-        print_error "Failed to download dependencies"
-        return 1
-    }
-
-    create_build_directory "$PROJECT_BUILD_DIR" || {
-        print_error "Failed to create build directory"
-        return 1
-    }
-
-    enter_build_directory "$PROJECT_BUILD_DIR" || {
-        print_error "Failed to enter build directory"
-        return 1
-    }
-
-    local old_path="$PATH"
-    export PATH="$SYSROOT_LOCATION/bin:${PATH}"
-
-    configure_steps || {
-        print_error "Configuration failed"
-        export PATH="${old_path}"
-        return 1
-    }
-
-    export PATH="${old_path}"
-
-    return 0
-}
-
-#
-# Description
-#
-#   Builds the project.
-#
-# Return Value
-#
-#  - On success, returns zero.
-#  - On failure, returns non-zero.
-#
-# Usage Example
-#
-#  build && echo "Success" || echo "Failure"
-#
-build() {
-    echo "Building ${PROJECT_NAME} for ${TARGET}..."
-
-    local parallel_build_option
-    if [[ -n "$PARALLEL_BUILD" ]]; then
-        if ! [[ "$PARALLEL_BUILD" =~ ^[0-9]+$ ]] || [[ "$PARALLEL_BUILD" -le 0 ]]; then
-            print_error "${PARALLEL_BUILD_OPT_NAME} must be a positive integer greater than zero"
-            return 1
-        fi
-        print_info "Using $PARALLEL_BUILD parallel jobs"
-        parallel_build_option="${PARALLEL_BUILD}"
-    else
-        print_info "Using all available CPU cores ($(nproc))"
-        parallel_build_option="$(nproc)"
-    fi
-
-    enter_build_directory "$PROJECT_BUILD_DIR" || {
-        print_error "Failed to enter build directory"
-        return 1
-    }
-
-    local old_path="$PATH"
-    export PATH="${SYSROOT_LOCATION}/bin:${PATH}"
-
-    build_steps "${parallel_build_option}" || {
-        export PATH="${old_path}"
-        return 1
-    }
-
-    export PATH="${old_path}"
-
-    return 0
-}
-
-#
-# Description
-#
-#   Installs project.
-#
-# Return Value
-#
-#  - On success, returns zero.
-#  - On failure, returns non-zero.
-#
-# Usage Example
-#
-#  install && echo "Success" || echo "Failure"
-#
-install() {
-    echo "Installing ${PROJECT_NAME} for Nanvix..."
-    echo "Install location: ${INSTALL_LOCATION}"
-
-    local old_path="$PATH"
-    export PATH="${SYSROOT_LOCATION}/bin:${PATH}"
-
-    install_steps || {
-        export PATH="${old_path}"
-        return 1
-    }
-
-    export PATH="${old_path}"
-
-    return 0
-}
-
-#
-# Description
-#
-#   Creates a release of the project.
-#
-# Return Value
-#
-#  - On success, returns zero.
-#  - On failure, returns non-zero.
-#
-# Usage Example
-#
-#  release && echo "Success" || echo "Failure"
-#
-release() {
-    configure || {
-        print_error "Configuration failed"
-        return 1
-    }
-    build || {
-        print_error "Build failed"
-        return 1
-    }
-    install || {
-        print_error "Installation failed"
-        return 1
-    }
-
-    print_info "Creating release..."
-
-    local tar_file_name="${RELEASE_NAME}.tar.bz2"
-
-    pushd "$INSTALL_LOCATION" || {
-        print_error "Failed to change directory to ${INSTALL_LOCATION}"
-        return 1
-    }
-
-    # Create a bzip2-compressed tarball of the install location
-    tar -cjf "${SCRIPT_DIR}/${tar_file_name}" . || {
-        print_error "Failed to create tar.bz2 file"
-        return 1
-    }
-
-    popd || {
-        print_error "Failed to return to the previous directory after creating the release"
-        return 1
-    }
-
-    print_info "Release created: ${SCRIPT_DIR}/${tar_file_name}"
-
-    return 0
-}
-
-#
-# Description
-#
-#   Installs required system packages to build the project.
-#
-# Return Value
-#
-#  - On success, returns zero.
-#  - On failure, returns non-zero.
-#
-# Usage Example
-#
-#  setup && echo "Success" || echo "Failure"
-#
-setup() {
-    print_info "Setting up required system packages for ${PROJECT_NAME}..."
-
-    # Check if running as root
-    if [[ $EUID -eq 0 ]]; then
-        print_info "Running as root - proceeding with package installation"
-    else
-        print_info "Checking if sudo is available..."
-        if ! command -v sudo >/dev/null 2>&1; then
-            print_error "sudo is not available"
-            return 1
-        fi
-        print_info "Will use sudo for package installation"
-    fi
-
-    # Update package list
-    print_info "Updating package list..."
-    if [[ $EUID -eq 0 ]]; then
-        apt-get update
-    else
-        sudo apt-get update
-    fi
-
-    # Install missing packages from REQUIRED_PACKAGES
-    print_info "Installing packages: ${REQUIRED_PACKAGES[*]}"
-    if [[ $EUID -eq 0 ]]; then
-        apt-get install -y "${REQUIRED_PACKAGES[@]}"
-    else
-        sudo apt-get install -y "${REQUIRED_PACKAGES[@]}"
-    fi
-
-    return 0
-}
-
-#==================================================================================================
 # Main Script
 #==================================================================================================
 
-# Main function
-main() {
-    # Validate OS compatibility first
-    check_os_compatibility
-
-    # Check if no command was specified.
-    if [[ $# -eq 0 ]]; then
-        show_help
-        return 1
-    fi
-
-    local command="$1"
-    shift
-
-    # Handle help command.
-    if [[ "$command" == "$HELP_CMD_NAME" ]]; then
-        show_help
-        return 0
-    fi
-
-    # Handle setup command.
-    if [[ "$command" == "$SETUP_CMD_NAME" ]]; then
-        setup || {
-            print_error "Setup failed"
-            return 1
-        }
-        print_success "Setup completed successfully."
-        return 0
-    fi
-
-    # For all other commands, check if required tools are available.
-    check_required_tools || {
-        print_error "Required tools are missing or do not meet the minimum version"
-        return 1
-    }
-
-    # Handle configure command.
-    if [[ "$command" == "$CONFIGURE_CMD_NAME" ]]; then
-        parse_args "$@" || {
-            print_error "Failed to parse arguments"
-            return 1
-        }
-
-        configure || {
-            print_error "Configuration failed"
-            return 1
-        }
-        print_success "Configuration completed successfully."
-        return 0
-    fi
-
-    # For other commands, load saved configuration.
-    load_config || {
-        print_error "Failed to load build configuration."
-        return 1
-    }
-
-    # Handle all other commands.
-    case "$command" in
-        "${BUILD_CMD_NAME}")
-            build || {
-                print_error "Build failed"
-                return 1
-            }
-            print_success "Build completed successfully."
-            ;;
-        "${INSTALL_CMD_NAME}")
-            install || {
-                print_error "Installation failed"
-                return 1
-            }
-            print_success "Installation completed successfully."
-            ;;
-        "${RELEASE_CMD_NAME}")
-            release || {
-                print_error "Release creation failed"
-                return 1
-            }
-            print_success "Release created successfully."
-            ;;
-        *)
-            show_help
-            return 1
-            ;;
-    esac
-
-    return 0
-}
-
 # Run main function with all arguments
-main "$@" || {
+zmain "$@" || {
     exit 1
 }
 
