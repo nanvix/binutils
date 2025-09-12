@@ -59,7 +59,7 @@ jobs:
       id: commit_info
       run: |
         SHORT_SHA=$(git rev-parse --short HEAD)
-        TAG_NAME="nanvix-${BINUTILS_VERSION}-${SHORT_SHA}"
+        TAG_NAME="nanvix-v${BINUTILS_VERSION}-${SHORT_SHA}"
         RELEASE_NAME="nanvix-binutils-${BINUTILS_VERSION}-${SHORT_SHA}"
         BINUTILS_BRANCH="nanvix/v${BINUTILS_VERSION}"
         echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
