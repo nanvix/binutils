@@ -26,7 +26,7 @@ set -euo pipefail
 # Import Utils Script
 #==================================================================================================
 
-UTILS_SCRIPT_VERSION="cbd2891623ed91ef6c69519c1f6e97aec43f40e8"
+UTILS_SCRIPT_VERSION="3330720ce417da854e0d8ccb15a340283cd6449d"
 UTILS_SCRIPT_URL="https://raw.githubusercontent.com/nanvix/scripts/${UTILS_SCRIPT_VERSION}/utils.sh"
 
 utils_script="/tmp/utils-${UTILS_SCRIPT_VERSION}.sh"
@@ -121,10 +121,12 @@ download_steps() {
 #   configure_steps "i686-nanvix" "/usr/local"
 #
 configure_steps() {
+    local sysroot_location="${Z_SYSROOT_LOCATION:-${Z_INSTALL_LOCATION}}"
+
     ./configure \
         --target="${Z_TARGET}" \
         --prefix="${Z_INSTALL_LOCATION}" \
-        --with-sysroot="${Z_SYSROOT_LOCATION}" \
+        --with-sysroot="${sysroot_location}" \
         --disable-multilib \
         --disable-nls \
         --disable-sim || {
