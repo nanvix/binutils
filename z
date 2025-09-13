@@ -62,7 +62,7 @@ source "${utils_script}"
 
 # Project name.
 readonly Z_PROJECT_NAME="Binutils"
- # Directory used when building, empty if not required.
+# Directory used when building, empty if not required.
 readonly Z_PROJECT_BUILD_DIR=""
 
 # Required Build Tools (tool_name => minimum_version)
