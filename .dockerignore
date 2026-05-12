@@ -1,0 +1,6 @@
+# Exclude the entire source tree; only docker-install/ (populated by the
+# release workflow) and the Dockerfile are needed for the image build.
+*
+!Dockerfile
+!docker-install/
+!docker-install/**
