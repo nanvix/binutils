@@ -1,0 +1,209 @@
+#!/bin/bash
+
+#
+# Utility for building development tools for Nanvix.
+#
+# Run './z help' for more information on how to use this utility.
+#
+# Relevant Environment Variables
+#
+#   - Z_TARGET: Target architecture.
+#   - Z_STAGE: Build stage.
+#   - Z_INSTALL_LOCATION: Installation directory.
+#   - Z_SYSROOT_LOCATION: Sysroot directory.
+#   - Z_RELEASE_NAME: Release name.
+#
+# shellcheck disable=SC2329
+# shellcheck disable=SC2317
+# shellcheck disable=SC2034
+
+#==================================================================================================
+
+# Fast fail on errors, unset variables, and pipe failures.
+set -euo pipefail
+
+#==================================================================================================
+# Import Utils Script
+#==================================================================================================
+
+UTILS_SCRIPT_VERSION="c24dedaf76a4833b388597805e2c0625cef0c453"
+UTILS_SCRIPT_URL="https://raw.githubusercontent.com/nanvix/scripts/${UTILS_SCRIPT_VERSION}/utils.sh"
+
+utils_script="/tmp/utils-${UTILS_SCRIPT_VERSION}.sh"
+
+# Download only if the file doesn't exist or is empty
+if [[ ! -s "$utils_script" ]]; then
+
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$UTILS_SCRIPT_URL" -o "$utils_script" || {
+            echo "Failed to download utils.sh"
+            rm -f "$utils_script"
+            exit 1
+        }
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO "$utils_script" "$UTILS_SCRIPT_URL" || {
+            echo "Failed to download utils.sh"
+            rm -f "$utils_script"
+            exit 1
+        }
+    else
+        echo "curl or wget required"
+        exit 1
+    fi
+fi
+
+# Source the downloaded script
+# shellcheck disable=SC1090
+source "${utils_script}"
+
+#==================================================================================================
+# Z Constants
+#==================================================================================================
+
+# Project name.
+readonly Z_PROJECT_NAME="Binutils"
+# Directory used when building, empty if not required.
+readonly Z_PROJECT_BUILD_DIR=""
+
+# Required Build Tools (tool_name => minimum_version)
+readonly -A Z_PROJECT_REQUIRED_TOOLS=(
+    ["gcc"]="13.3.0"
+    ["make"]="4.3.0"
+    ["bzip2"]="1.0.8"
+    ["tar"]="1.34.0"
+)
+
+# Required System Packages for Setup
+readonly Z_PROJECT_REQUIRED_PACKAGES=("build-essential" "wget" "bzip2" "tar" "libmpfr-dev" "libgmp-dev")
+
+#==================================================================================================
+# Project-Specific Constants
+#==================================================================================================
+
+# Build Targets
+readonly BUILD_TARGETS=("all")
+
+# Install Targets
+readonly INSTALL_TARGETS=("install")
+
+#==================================================================================================
+# Project-Specific Functions
+#==================================================================================================
+
+#
+# Description
+#
+#   Executes project-specific steps for downloading dependencies.
+#
+# Return Value
+#
+#   - On success, this function returns zero.
+#   - On failure, this function returns non-zero.
+#
+download_steps() {
+    print_info "No additional dependencies to download for ${Z_PROJECT_NAME}."
+
+    return 0
+}
+
+#
+# Description
+#
+#   Executes project-specific steps for configuring a build.
+#
+# Return Value
+#
+#   - On success, this function returns zero.
+#   - On failure, this function returns non-zero.
+#
+# Usage Example
+#
+#   configure_steps "i686-nanvix" "/usr/local"
+#
+configure_steps() {
+    local sysroot_location="${Z_SYSROOT_LOCATION:-${Z_INSTALL_LOCATION}}"
+
+    # Enable compilation caching if possible.
+    enable_compilation_caching || {
+        print_warning "Compilation caching disabled."
+    }
+
+    ./configure \
+        --target="${Z_TARGET}" \
+        --prefix="${Z_INSTALL_LOCATION}" \
+        --with-sysroot="${sysroot_location}" \
+        --disable-multilib \
+        --disable-nls \
+        --disable-sim \
+        --disable-gdb \
+        --disable-gdbserver \
+        --disable-werror || {
+        print_error "Configuration failed"
+        return 1
+    }
+
+    return 0
+}
+
+#
+# Description
+#
+#   Project-specific steps for building the project.
+#
+# Parameters
+#
+#   - $1: Number of parallel build jobs.
+#
+# Usage Example
+#
+#   build_steps 4 "all" "check"
+#
+build_steps() {
+    local parallel_build_option=$1
+
+    # Enable compilation caching if possible.
+    enable_compilation_caching || {
+        print_warning "Compilation caching disabled."
+    }
+
+    make -j "${parallel_build_option}" "${BUILD_TARGETS[@]}" || {
+        print_error "Build failed for targets: ${BUILD_TARGETS[*]}"
+        return 1
+    }
+
+    return 0
+}
+
+#
+# Description
+#
+#   Project-specific steps for installing the project.
+#
+# Return Value
+#
+#   - On success, this function returns zero.
+#   - On failure, this function returns non-zero.
+#
+# Usage Example
+#
+#   install_steps "install" "/usr/local"
+#
+install_steps() {
+    make "${INSTALL_TARGETS[@]}" || {
+        print_error "Installation failed"
+        return 1
+    }
+
+    return 0
+}
+
+#==================================================================================================
+# Main Script
+#==================================================================================================
+
+# Run main function with all arguments
+zmain "$@" || {
+    exit 1
+}
+
+exit 0
